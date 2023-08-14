@@ -1,4 +1,4 @@
-module github.com/izayoisakuya1111/Tiktok
+module github.com/izayoisakuya1111/douyin
 
 go 1.20
 
