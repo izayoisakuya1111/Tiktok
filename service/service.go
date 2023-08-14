@@ -1,87 +1,163 @@
-package service
+package controller
+
+
 
 import (
-	"encoding/json"
-  "github.com/izayoisakuya1111/douyin/controller"
-	"fmt"
-	"io"
-	"net"
-	"sync"
+
+	"github.com/gin-gonic/gin"
+
+	"net/http"
+
+	"sync/atomic"
+
 )
 
-var chatConnMap = sync.Map{}
 
-func initRouter(r *gin.Engine) {
-	// public directory is used to serve static resources
-	r.Static("/static", "./public")
 
-	apiRouter := r.Group("/douyin")
 
-	// basic apis
 
-	apiRouter.POST("/user/register/", controller.Register)
-	apiRouter.POST("/user/login/", controller.Login)
+var usersLoginInfo = map[string]User{}
+
+
+
+var userIdSequence = int64(1)
+
+
+
+type UserLoginResponse struct {
+
+	Response
+
+	UserId int64  `json:"user_id,omitempty"`
+
+	Token  string `json:"token"`
 
 }
 
 
-func RunMessageServer() {
-	listen, err := net.Listen("tcp", "127.0.0.1:9090")
-	if err != nil {
-		fmt.Printf("Run message sever failed: %v\n", err)
-		return
-	}
 
-	for {
-		conn, err := listen.Accept()
-		if err != nil {
-			fmt.Printf("Accept conn failed: %v\n", err)
-			continue
-		}
+type UserResponse struct {
 
-		go process(conn)
-	}
+	Response
+
+	User User `json:"user"`
+
 }
 
-func process(conn net.Conn) {
-	defer conn.Close()
 
-	var buf [256]byte
-	for {
-		n, err := conn.Read(buf[:])
-		if n == 0 {
-			if err == io.EOF {
-				break
-			}
-			fmt.Printf("Read message failed: %v\n", err)
-			continue
+
+func Register(c *gin.Context) {
+
+	username := c.Query("username")
+
+	password := c.Query("password")
+
+
+
+	token := username + password
+
+
+
+	if _, exist := usersLoginInfo[token]; exist {
+
+		c.JSON(http.StatusOK, UserLoginResponse{
+
+			Response: Response{StatusCode: 1, StatusMsg: "用户已存在"},
+
+		})
+
+	} else {
+
+		atomic.AddInt64(&userIdSequence, 1)
+
+		newUser := User{
+
+			Id:   userIdSequence,
+
+			Name: username,
+
 		}
 
-		var event = controller.MessageSendEvent{}
-		_ = json.Unmarshal(buf[:n], &event)
-		fmt.Printf("Receive Message：%+v\n", event)
+		usersLoginInfo[token] = newUser
 
-		fromChatKey := fmt.Sprintf("%d_%d", event.UserId, event.ToUserId)
-		if len(event.MsgContent) == 0 {
-			chatConnMap.Store(fromChatKey, conn)
-			continue
-		}
+		c.JSON(http.StatusOK, UserLoginResponse{
 
-		toChatKey := fmt.Sprintf("%d_%d", event.ToUserId, event.UserId)
-		writeConn, exist := chatConnMap.Load(toChatKey)
-		if !exist {
-			fmt.Printf("User %d offline\n", event.ToUserId)
-			continue
-		}
+			Response: Response{StatusCode: 0},
 
-		pushEvent := controller.MessagePushEvent{
-			FromUserId: event.UserId,
-			MsgContent: event.MsgContent,
-		}
-		pushData, _ := json.Marshal(pushEvent)
-		_, err = writeConn.(net.Conn).Write(pushData)
-		if err != nil {
-			fmt.Printf("Push message failed: %v\n", err)
-		}
+			UserId:   userIdSequence,
+
+			Token:    username + password,
+
+		})
+
 	}
+
 }
+
+
+
+func Login(c *gin.Context) {
+
+	username := c.Query("username")
+
+	password := c.Query("password")
+
+
+
+	token := username + password
+
+
+
+	if user, exist := usersLoginInfo[token]; exist {
+
+		c.JSON(http.StatusOK, UserLoginResponse{
+
+			Response: Response{StatusCode: 0},
+
+			UserId:   user.Id,
+
+			Token:    token,
+
+		})
+
+	} else {
+
+		c.JSON(http.StatusOK, UserLoginResponse{
+
+			Response: Response{StatusCode: 1, StatusMsg: "用户不存在"},
+
+		})
+
+	}
+
+}
+
+
+
+func UserInfo(c *gin.Context) {
+
+	token := c.Query("token")
+
+
+
+	if user, exist := usersLoginInfo[token]; exist {
+
+		c.JSON(http.StatusOK, UserResponse{
+
+			Response: Response{StatusCode: 0},
+
+			User:     user,
+
+		})
+
+	} else {
+
+		c.JSON(http.StatusOK, UserResponse{
+
+			Response: Response{StatusCode: 1, StatusMsg: "用户不存在"},
+		})
+
+	}
+
+}
+
