@@ -1,4 +1,4 @@
-module main
+module github.com/izayoisakuya1111/Tiktok
 
 go 1.20
 
