@@ -5,6 +5,9 @@ import (
   "github.com/izayoisakuya1111/douyin/service"
 )
 
+//go mod download github.com/izayoisakuya1111/douyin
+//go run main.go router.go
+
 func main() {
 	go service.RunMessageServer()
 
