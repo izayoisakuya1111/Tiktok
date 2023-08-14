@@ -1,4 +1,4 @@
-module github.com/izayoisakuya1111/Tiktok@v0.0.0-20230814062714-d795e56e2b1c
+module github.com/izayoisakuya1111/Tiktok
 
 go 1.20
 
