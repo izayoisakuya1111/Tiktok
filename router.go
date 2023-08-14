@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+  "github.com/izayoisakuya1111/douyin/controller"
 )
 
 func initRouter(r *gin.Engine) {
